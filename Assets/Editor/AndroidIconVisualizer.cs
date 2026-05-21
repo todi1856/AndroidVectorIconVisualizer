@@ -1,4 +1,3 @@
-using System.Drawing;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -14,52 +13,96 @@ public class AndroidIconVisualizer : EditorWindow
     }
 
     AndroidVectorDrawableElement m_Icon;
-    string m_LastPath;
+    TextField m_PathField;
+    FileSystemWatcher m_Watcher;
+    volatile bool m_NeedsRefresh;
 
     public void CreateGUI()
     {
-        // Each editor window contains a root VisualElement object
         VisualElement root = rootVisualElement;
 
-        // VisualElements objects can contain other VisualElement following a tree hierarchy
-        Label label = new Label("Hello World!");
-        root.Add(label);
+        var row = new VisualElement();
+        row.style.flexDirection = FlexDirection.Row;
+        row.style.alignItems = Align.Center;
 
-        // Create button
-        var button = new Button();
-        button.text = "Open";
-        button.clicked += () =>
+        m_PathField = new TextField();
+        m_PathField.style.flexGrow = 1;
+        m_PathField.RegisterValueChangedCallback(evt =>
+        {
+            SetupWatcher(evt.newValue);
+            Refresh(evt.newValue);
+        });
+        row.Add(m_PathField);
+
+        var openButton = new Button(() =>
         {
             var path = EditorUtility.OpenFilePanel("Select Android Vector Drawable", "", "xml");
             if (!string.IsNullOrEmpty(path))
-            {
-                m_LastPath = path;
-                Refresh(path);
-            }
-        };
-        root.Add(button);
+                m_PathField.value = path;
+        });
+        openButton.text = "Open";
+        openButton.style.flexShrink = 0;
+        row.Add(openButton);
 
-        button = new Button();
-        button.text = "Refresh";
-        button.clicked += () =>
-        {
-            Refresh(m_LastPath);
-        };
-        root.Add(button);
-
+        root.Add(row);
     }
 
-    private void Refresh(string path)
+    void Update()
     {
-        if (string.IsNullOrEmpty(path))
+        if (m_NeedsRefresh)
+        {
+            m_NeedsRefresh = false;
+            Refresh(m_PathField.value);
+        }
+    }
+
+    void OnDestroy()
+    {
+        DisposeWatcher();
+    }
+
+    void SetupWatcher(string path)
+    {
+        DisposeWatcher();
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return;
-        if (!File.Exists(path))
+
+        m_Watcher = new FileSystemWatcher(Path.GetDirectoryName(path), Path.GetFileName(path));
+        m_Watcher.NotifyFilter = NotifyFilters.LastWrite;
+        m_Watcher.Changed += (_, __) => m_NeedsRefresh = true;
+        m_Watcher.EnableRaisingEvents = true;
+    }
+
+    void DisposeWatcher()
+    {
+        if (m_Watcher != null)
+        {
+            m_Watcher.Dispose();
+            m_Watcher = null;
+        }
+    }
+
+    void Refresh(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return;
         if (m_Icon != null)
+        {
             rootVisualElement.Remove(m_Icon);
-        m_Icon = new AndroidVectorDrawableElement(File.ReadAllText(path));
-        m_Icon.style.width = 300;
-        m_Icon.style.height = 300;
+            m_Icon = null;
+        }
+        try
+        {
+            m_Icon = new AndroidVectorDrawableElement(File.ReadAllText(path));
+            m_Icon.style.width = 300;
+            m_Icon.style.height = 300;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"Failed to load Android Vector Drawable: {ex}");
+            return;
+        }
+
         rootVisualElement.Add(m_Icon);
     }
 }
