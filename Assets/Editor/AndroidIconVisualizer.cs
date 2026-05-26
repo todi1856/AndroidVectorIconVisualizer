@@ -9,7 +9,7 @@ public class AndroidIconVisualizer : EditorWindow
 
     private VisualElement m_PreviewContainer;
 
-    [MenuItem("Examples/Android Icon Visualizer")]
+    [MenuItem("Android/Android Icon Visualizer")]
     public static void ShowExample()
     {
         var wnd = GetWindow<AndroidIconVisualizer>();
@@ -18,6 +18,8 @@ public class AndroidIconVisualizer : EditorWindow
 
     public void CreateGUI()
     {
+        rootVisualElement.Add(new Label("<b>Note: Had to .android_xml extension, since .xml is reserved by something else.</b>"));
+        rootVisualElement.Add(new Label("<b>Select an Android Vector Drawable Asset to preview its icon:</b>"));
         var objectField = new ObjectField("Icon")
         {
             objectType = typeof(AndroidVectorDrawableAsset),
