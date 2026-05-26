@@ -1,20 +1,54 @@
-using System.IO;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class AndroidIconVisualizer : EditorWindow
 {
-    public AndroidVectorDrawableAsset m_Icon;
+    [SerializeField] private AndroidVectorDrawableAsset m_Icon;
+
+    private VisualElement m_PreviewContainer;
+
     [MenuItem("Examples/Android Icon Visualizer")]
     public static void ShowExample()
     {
-        AndroidIconVisualizer wnd = GetWindow<AndroidIconVisualizer>();
+        var wnd = GetWindow<AndroidIconVisualizer>();
         wnd.titleContent = new GUIContent("Android Icon Visualizer");
     }
 
-    private void OnGUI()
+    public void CreateGUI()
     {
-        m_Icon = (AndroidVectorDrawableAsset)EditorGUILayout.ObjectField("Icon", m_Icon, typeof(AndroidVectorDrawableAsset), true);
+        var objectField = new ObjectField("Icon")
+        {
+            objectType = typeof(AndroidVectorDrawableAsset),
+            value = m_Icon
+        };
+        objectField.RegisterValueChangedCallback(evt =>
+        {
+            m_Icon = evt.newValue as AndroidVectorDrawableAsset;
+            UpdatePreview();
+        });
+        rootVisualElement.Add(objectField);
+
+        m_PreviewContainer = new VisualElement();
+        m_PreviewContainer.style.alignItems = Align.Center;
+        m_PreviewContainer.style.paddingTop = 8;
+        m_PreviewContainer.style.flexGrow = 1;
+        rootVisualElement.Add(m_PreviewContainer);
+
+        UpdatePreview();
+    }
+
+    private void UpdatePreview()
+    {
+        m_PreviewContainer.Clear();
+
+        if (m_Icon == null || string.IsNullOrEmpty(m_Icon.xmlContent))
+            return;
+
+        var preview = new AndroidVectorDrawableElement(m_Icon.xmlContent);
+        preview.style.width = 256;
+        preview.style.height = 256;
+        m_PreviewContainer.Add(preview);
     }
 }
